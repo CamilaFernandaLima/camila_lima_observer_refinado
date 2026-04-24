@@ -1,6 +1,14 @@
 ﻿using System;
 using System.Collections.Generic;
 
+
+/* O modelo escolhido implementa a Inversão de COntrole (IoC), onde a classe Subject (PCD) não depende de classes 
+ * concretas de observadores. Ela mantém apenas referência a uma interface (IObserver), que deve ser implementada 
+ * por essas. 
+ * Assim, o Subject decide o momento e o conteúdo da notificação, e executa o callback (Update) em cada observador 
+ * registrado, mas não controla o que os observadores fazem com essa notificação -> Princípio de Hollywood.
+ */
+
 public abstract class Subject
 {
     private List<IObserver> observers = new List<IObserver>();
@@ -13,23 +21,26 @@ public abstract class Subject
     {
         observers.Remove(observer);
     }
-    public void NotifyObservers()
+    public void NotifyObservers(PCD pcd, string tipoAlteracao)
     {
         foreach (var observer in observers)
         {
-            observer.Update(this);
+            // o callback, de fato, é a execução da interface (Subject chama a implementação definida pelo observador). 
+            // a inversão de controle acontece aqui, pois o Subject não controla o que os Observers fazem com a notificação, apenas o momento e o conteúdo delas.
+            observer.Update(pcd, tipoAlteracao);
         }
     }
 }
 
+// agora, essa interface define o contrato com os observadores
 public interface IObserver
 {
-    void Update(Subject s);
+    void Update(PCD pcd, string tipoAlteracao);
 }
 
 public class PCD : Subject
 {
-    public string nomeRio { get; set; }
+    public string nomeRio { get; private set; }
 
     private double ph;
     private double temperatura;
@@ -40,11 +51,14 @@ public class PCD : Subject
     {
         this.nomeRio = nome;
     }
+
+    // a partir de agora, cada setter dispara um evento específico
+    // ao chamar NotifyObservers, estamos empiurrando (push) a atualização para o observador, permitindo o callback.
+
     public string GetNomeRio()
     {
         return nomeRio;
     }
-
     public double GetPh()
     {
         return ph;
@@ -52,7 +66,7 @@ public class PCD : Subject
     public void SetPh(double ph)
     {
         this.ph = ph;
-        NotifyObservers();
+        NotifyObservers(this, "ph");
     }
     public double GetTemperatura()
     {
@@ -61,7 +75,7 @@ public class PCD : Subject
     public void SetTemperatura(double temperatura)
     {
         this.temperatura = temperatura;
-        NotifyObservers();
+        NotifyObservers(this, "temperatura");
     }
     public double GetUmidade()
     {
@@ -70,7 +84,7 @@ public class PCD : Subject
     public void SetUmidade(double umidade)
     {
         this.umidade = umidade;
-        NotifyObservers();
+        NotifyObservers(this, "umidade");
     }
     public double GetPressao()
     {
@@ -79,7 +93,7 @@ public class PCD : Subject
     public void SetPressao(double pressao)
     {
         this.pressao = pressao;
-        NotifyObservers();
+        NotifyObservers(this, "pressao");
     }
 }
 
@@ -91,14 +105,14 @@ public class Universidade : IObserver
         this.nomeUni = nome;
     }
 
-    public void Update(Subject s)
+    // CALLBACK: define a reação da Universidade à notificação de mudança de estado na PCD.
+    // esse método computa a manifestação da notificação de mudança de estado e, portanto, permite que a Universidade reaja ao evento quando a PCD decide notificar.
+    public void Update(PCD pcd, string tipoAlteracao)
     {
-        PCD pcd = (PCD)s;
-        Console.WriteLine($"[NOTIFICAÇÃO] {nomeUni} detectou mudança no {pcd.GetNomeRio()}.");
+        Console.WriteLine($"[CALLBACK] {nomeUni} notificada de mudança em {tipoAlteracao} no {pcd.nomeRio}.");
         Console.WriteLine($"Temp: {pcd.GetTemperatura()}°C, pH: {pcd.GetPh()}, Umidade: {pcd.GetUmidade()}%, Pressão: {pcd.GetPressao()} hPa\n");
     }
 }
-
 
 public class Program
 {
